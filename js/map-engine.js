@@ -8,7 +8,7 @@ $(function () {
     // Create map control
     var map = L.map("map", {
         minZoom: mapInfos.minZoom,
-        maxZoom: mapInfos.maxZoom,
+        maxZoom: 15,
         crs: mapInfos.CRS,
     });
 

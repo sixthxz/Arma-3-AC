@@ -13,7 +13,7 @@ $(function () {
     });
 
     // Define tile layer
-    L.tileLayer(
+    L.tileLayer.fallback(
         "https://jetelain.github.io/Arma3Map" + mapInfos.tilePattern,
         {
             attribution: mapInfos.attribution,

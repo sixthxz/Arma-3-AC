@@ -182,9 +182,10 @@ function addExtraZero (coord) {
 
 new L.cascadeButtons([
     {icon: 'fa fa-bars', title:'Menu', items:[
-        {icon: 'fa fa-map-pin', title: 'New Initial Marker (Left Click)', command: () =>{addMarker1()}},
-        {icon: 'fa fa-crosshairs', title: 'Input Coordinates', command: () =>{addMarker2()}},
-        {icon: 'fa fa-globe', title: 'Grid (Working on it)', command: () =>{console.log('button3')}},
+        {icon: 'fa fa-map-pin', title: 'New Battery coordinates (Left click anywhere on the map)', command: () =>{addMarker1()}},
+        {icon: 'fa fa-crosshairs', title: 'New battery coordinates (Input X, Y values)', command: () =>{addMarker2()}},
+        {icon: 'fa fa-table', title: 'Grid (Working on it)'},
+        {icon: 'fa fa-question', title: 'How does it work?\n- Right click anywhere on the map to set up the first marker or input coordinates using button 2\n- Once first marker is set, all of the subsequent markers are going to be target markers of that specific marker until you add a new first marker\n- Currently only displays each marker coordinates and the distance between them'},
     ]}
 ], {position:'topleft', direction:'horizontal'}).addTo(map);
 

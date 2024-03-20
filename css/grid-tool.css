@@ -1,0 +1,63 @@
+
+#parent {
+  width:200px;
+  margin-top: -50px;
+  padding: 2rem 2rem;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 9999;
+}
+#parentheader {
+
+  cursor: move;
+  z-index: 10;
+}
+.grid-container {
+  display: grid;
+  grid-template-columns: repeat(11, 1fr);
+  grid-template-rows: repeat(11, 1fr);
+  width: 165px; /* (11 columnas * 30px) + (10 gaps * 1px) */
+  height: 165px; /* (12 filas * 30px) + (10 gaps * 1px) */
+  margin: 0 25px ;
+  overflow: hidden; /* Ocultar el contenido que se sale de los límites del contenedor */
+}
+
+.grid-item {
+  border: 1px solid black;
+  text-align: center;
+  line-height: 30px;
+  font-size: 14px;
+  margin: -0.048em; /* Compensar el borde para que parezca que no hay borde exterior -0.05 vs -0.048em */
+}
+
+.y-num {
+  font-size: 12px;
+  display: flex;
+  align-items: centered;
+  justify-content: center;
+}
+
+.x-num {
+  font-size: 12px;
+  display: inline-grid;
+  align-items: centered;
+  justify-content: center;
+}
+
+.left-numbers {
+ line-height: 15px;
+ position:absolute;
+ width: 25px;
+ height: 165px;
+ margin-top:7px;
+}
+
+.bottom-numbers {
+ line-height: 10px;
+ letter-spacing: 9px;
+ position:absolute;
+ width: 165px;
+ height: 25px;
+ margin-top:7px;
+ margin-left:28px;

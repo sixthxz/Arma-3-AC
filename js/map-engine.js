@@ -1,15 +1,17 @@
 $(function () {
     var mapInfos = Arma3Map.Maps.altis;
     var map = initializeMap(mapInfos);
-    var markers = L.markerClusterGroup();
+    var markers = L.markerClusterGroup({
+    maxClusterRadius: 1 // Ajusta el radio máximo de agrupación en píxeles
+});
     map.addLayer(markers);
     var startPoint = null;
     var gridMousePositionControl = L.control.gridMousePosition().addTo(map);
-    var polyline = null; // Definir la variable polyline aquí
+    var polylines = []; // Array para almacenar todas las polilíneas creadas
+    var markersAndPolylines = []; // Array para almacenar los marcadores y sus respectivas polilíneas
 
-var markers = L.markerClusterGroup({
-    maxClusterRadius: 1 // Ajusta el radio máximo de agrupación en píxeles
-});
+
+    
     map.on('contextmenu', function(e) {
         if (startPoint === null) {
             startPoint = e.latlng;
@@ -17,7 +19,6 @@ var markers = L.markerClusterGroup({
         } else {
             var endPoint = e.latlng;
             addMarkerAndDistance(startPoint, endPoint, markers, gridMousePositionControl, map);
-            addPolyline(startPoint, endPoint, map);
         }
     });
 
@@ -34,7 +35,7 @@ var markers = L.markerClusterGroup({
                 attribution: mapInfos.attribution,
                 tileSize: mapInfos.tileSize,
             }
-        ).addTo(map);
+            ).addTo(map);
 
         map.setView(mapInfos.center, mapInfos.defaultZoom);
 
@@ -49,47 +50,92 @@ var markers = L.markerClusterGroup({
         marker.bindPopup(generatePopupContent(gridMousePositionControl)).openPopup();
     }
 
-    function addMarkerAndDistance(startPoint, endPoint, markers, gridMousePositionControl, map) {
-        var distance = calculateDistance(endPoint.lat, endPoint.lng, startPoint.lat, startPoint.lng);
-        var marker = L.marker(endPoint, { icon: customIcon, draggable: true }).addTo(map);
-        marker.bindPopup(generatePopupContent(gridMousePositionControl, distance)).openPopup().addTo(markers);
-        marker.on('dragend', function(event){
-            updatePopupContent(marker, startPoint, gridMousePositionControl);
-            if (polyline) {
-                map.removeLayer(polyline); // Eliminar la polyline existente si está definida
-            }
-            var newEndPoint = event.target.getLatLng();
-            addPolyline(startPoint, newEndPoint, map); // Agregar la nueva polyline desde startPoint hasta newEndPoint
-        });
-    }
-
     function addPolyline(startPoint, endPoint, map) {
-        polyline = L.polyline([startPoint, endPoint], { color: 'red' }).addTo(map); // Asignar la nueva polyline a la variable polyline
+        var polyline = L.polyline([startPoint, endPoint], { color: 'red' }).addTo(map);
+    polylines.push(polyline); // Agregar la polilínea al array
+    return polyline;
+}
+
+function addMarkerAndDistance(startPoint, endPoint, markers, gridMousePositionControl, map) {
+    var distance = calculateDistance(endPoint.lat, endPoint.lng, startPoint.lat, startPoint.lng);
+    var marker = L.marker(endPoint, { icon: customIcon, draggable: true }).addTo(map);
+    marker.bindPopup(generatePopupContent(gridMousePositionControl, distance)).openPopup().addTo(markers);
+
+    // Crear la polilínea y almacenarla en una variable
+    var polyline = addPolyline(startPoint, endPoint, map);
+
+    // Almacenar el marcador y la polilínea en un objeto
+    var markerWithPolyline = {
+        marker: marker,
+        polyline: polyline
+    };
+
+    // Agregar el objeto al array de polilíneas y marcadores
+    markersAndPolylines.push(markerWithPolyline);
+
+    marker.on('drag', function(event){
+        updatePopupContent(marker, startPoint, gridMousePositionControl);
+        updatePolyline(marker, map); // Pasar el marcador en lugar de startPoint
+    });
+}
+
+function updatePolyline(marker, map) {
+    // Buscar el objeto que contiene el marcador actual en markersAndPolylines
+    var markerWithPolyline = markersAndPolylines.find(function(item) {
+        return item.marker === marker; // Comparar con el marcador pasado como argumento
+    });
+
+    if (markerWithPolyline) {
+        // Si se encontró el objeto, actualizar la polilínea asociada al marcador
+        var startPoint = markerWithPolyline.polyline.getLatLngs()[0];
+        var endPoint = marker.getLatLng();
+        markerWithPolyline.polyline.setLatLngs([startPoint, endPoint]);
+    } else {
+        console.error('No se encontró el marcador en markersAndPolylines.');
+    }
+}
+
+
+function removeMarkers(markers, polylinesLayer) {
+    // Elimina los marcadores
+    if (markers && markers.clearLayers) {
+        markers.clearLayers();
+    } else {
+        console.error('La capa de marcadores no está definida o no es válida.');
     }
 
-       function generatePopupContent(gridMousePositionControl, distance) {
-        var content = `
-            <table>
-                <tr><th colspan="2" style="text-align: center;">Coordinates</th></tr>
-                <tr><td>X</td><td>Y</td></tr>
-                <tr><td>${gridMousePositionControl._container.innerText.split(' - ')[0]}</td><td>${gridMousePositionControl._container.innerText.split(' - ')[1]}</td></tr>
-            </table>
+    // Elimina las polilíneas
+    if (polylinesLayer && polylinesLayer.clearLayers) {
+        polylinesLayer.clearLayers();
+    } else {
+        console.error('La capa de polilíneas no está definida o no es válida.');
+    }
+}
+
+
+function generatePopupContent(gridMousePositionControl, distance) {
+    var content = `
+    <table>
+    <tr><th colspan="2" style="text-align: center;">Coordinates</th></tr>
+    <tr><td>X</td><td>Y</td></tr>
+    <tr><td>${gridMousePositionControl._container.innerText.split(' - ')[0]}</td><td>${gridMousePositionControl._container.innerText.split(' - ')[1]}</td></tr>
+    </table>
+    `;
+    if (distance !== undefined) {
+        content += `
+        <tr><th colspan="2" style="text-align: center;">Distance</th></tr>
+        <tr><td colspan="2" style="text-align: center;">${(distance / 10).toFixed(1)} m</td></tr>
         `;
-        if (distance !== undefined) {
-            content += `
-                <tr><th colspan="2" style="text-align: center;">Distance</th></tr>
-                <tr><td colspan="2" style="text-align: center;">${(distance / 10).toFixed(1)} m</td></tr>
-            `;
-        }
-        return content;
     }
+    return content;
+}
 
-    function updatePopupContent(marker, startPoint, gridMousePositionControl) {
-        var newLatLng = marker.getLatLng();
-        var distance = calculateDistance(newLatLng.lat, newLatLng.lng, startPoint.lat, startPoint.lng);
-        var popupContent = generatePopupContent(gridMousePositionControl, distance);
-        marker.setPopupContent(popupContent);
-    }
+function updatePopupContent(marker, startPoint, gridMousePositionControl) {
+    var newLatLng = marker.getLatLng();
+    var distance = calculateDistance(newLatLng.lat, newLatLng.lng, startPoint.lat, startPoint.lng);
+    var popupContent = generatePopupContent(gridMousePositionControl, distance);
+    marker.setPopupContent(popupContent);
+}
 
 function updatePopupContentFromInput(marker, x, y) {
     console.log("Valor de x:", x);
@@ -106,11 +152,11 @@ function updatePopupContentFromInput(marker, x, y) {
         
         // Crear el contenido del popup con las coordenadas redondeadas a enteros y sin el cero extra
         var content = `
-            <table>
-                <tr><th colspan="2" style="text-align: center;">Coordinates</th></tr>
-                <tr><td>X</td><td>Y</td></tr>
-                <tr><td>${xString}</td><td>${yString}</td></tr>
-            </table>
+        <table>
+        <tr><th colspan="2" style="text-align: center;">Coordinates</th></tr>
+        <tr><td>X</td><td>Y</td></tr>
+        <tr><td>${xString}</td><td>${yString}</td></tr>
+        </table>
         `;
         marker.bindPopup(content).openPopup(); // Asociar el contenido del popup al marcador y abrirlo
     } else {
@@ -173,11 +219,20 @@ function addExtraZero (coord) {
     return coord; // Devolver la coordenada sin cambios
 }
 
+function removeMarkers(markers, polylines) {
+    // Eliminar los marcadores
+    if (markers && markers.clearLayers) {
+        markers.clearLayers();
+    } else {
+        console.error('La capa de marcadores no está definida o no es válida.');
+    }
 
-
-
-
-
+    // Eliminar todas las polilíneas
+    polylines.forEach(function(polyline) {
+        map.removeLayer(polyline);
+    });
+    polylines = []; // Limpiar el array de polilíneas
+}
 
 
 new L.cascadeButtons([
@@ -185,9 +240,10 @@ new L.cascadeButtons([
         {icon: 'fa fa-map-pin', title: 'New Battery coordinates (Left click anywhere on the map)', command: () =>{addMarker1()}},
         {icon: 'fa fa-crosshairs', title: 'New battery coordinates (Input X, Y values)', command: () =>{addMarker2()}},
         {icon: 'fa fa-table', title: 'Grid (Working on it)'},
-        {icon: 'fa fa-question', title: 'How does it work?\n- Right click anywhere on the map to set up the first marker or input coordinates using button 2\n- Once first marker is set, all of the subsequent markers are going to be target markers of that specific marker until you add a new first marker\n- Currently only displays each marker coordinates and the distance between them'},
-    ]}
-], {position:'topleft', direction:'horizontal'}).addTo(map);
+        {icon: 'fa fa-trash', title: 'Delete all markers', command: () =>{removeMarkers(markers, polylines)}},
+        {icon: 'fa fa-question', title: 'How does it work?\n- Zoom using the mouse wheel or "+" — "-" buttons\n- Right click anywhere on the map to set up the first marker or input coordinates using button 2\n- Once first marker is set, all of the subsequent markers are going to be target markers of that specific marker until you add a new first marker\n- Currently only displays each marker coordinates and the distance between them'},
+        ]}
+    ], {position:'topleft', direction:'horizontal'}).addTo(map);
 
 
 
